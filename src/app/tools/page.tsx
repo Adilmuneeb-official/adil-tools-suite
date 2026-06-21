@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Search, Heart, Lock, Copy, Save, X, Play, Sparkles } from 'lucide-react'
+import { Search, Heart, Lock, Copy, Save, Play, Sparkles, UploadCloud, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import * as Icons from 'lucide-react'
 
@@ -50,6 +50,7 @@ function ToolsPortalInner() {
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<{ output: string; extra?: any; elapsedMs?: number } | null>(null)
   const [accessDenied, setAccessDenied] = useState<{ reason: string; upgradeTo?: string; usedToday?: number; limit?: number } | null>(null)
+  const [formError, setFormError] = useState('')
 
   // Load tools + categories + user
   useEffect(() => {
@@ -141,12 +142,40 @@ function ToolsPortalInner() {
     setRunning(true)
     setResult(null)
     setAccessDenied(null)
+    setFormError('')
     try {
-      const resp = await fetch('/api/tools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: activeTool.slug, ...formValues }),
+      const missing = activeTool.fields.find((f: any) => {
+        const value = formValues[f.name]
+        return f.required && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0))
       })
+      if (missing) {
+        setFormError(`${missing.label} is required.`)
+        setRunning(false)
+        return
+      }
+
+      const hasFiles = activeTool.fields.some((f: any) => f.type === 'file')
+      const requestInit: RequestInit = { method: 'POST' }
+
+      if (hasFiles) {
+        const payload = new FormData()
+        payload.append('slug', activeTool.slug)
+        for (const f of activeTool.fields) {
+          const value = formValues[f.name]
+          if (f.type === 'file') {
+            const files = Array.isArray(value) ? value : value ? [value] : []
+            for (const file of files) payload.append(f.name, file)
+          } else if (value !== undefined && value !== null) {
+            payload.append(f.name, String(value))
+          }
+        }
+        requestInit.body = payload
+      } else {
+        requestInit.headers = { 'Content-Type': 'application/json' }
+        requestInit.body = JSON.stringify({ slug: activeTool.slug, ...formValues })
+      }
+
+      const resp = await fetch('/api/tools', requestInit)
       const data = await resp.json()
       if (resp.ok && data.success !== false) {
         setResult({ output: data.output, extra: data.extra, elapsedMs: data.elapsedMs })
@@ -158,10 +187,12 @@ function ToolsPortalInner() {
         if (data.reason === 'upgrade_required' || data.reason === 'limit_reached') {
           setAccessDenied({ reason: data.reason, upgradeTo: data.upgradeTo, usedToday: data.used, limit: data.limit })
         } else {
+          setFormError(data.error || 'Failed to run tool.')
           toast.error(data.error || 'Failed')
         }
       }
     } catch {
+      setFormError('Network error. Please try again.')
       toast.error('Network error')
     }
     setRunning(false)
@@ -200,6 +231,8 @@ function ToolsPortalInner() {
     const Comp = (Icons as any)[name] || Icons.Wrench
     return <Comp className="h-5 w-5" />
   }
+
+  const planRank = (plan?: string) => ({ free: 0, pro: 1, agency: 2 }[plan as 'free' | 'pro' | 'agency'] ?? 0)
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-7xl">
@@ -261,7 +294,7 @@ function ToolsPortalInner() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(t => {
-            const locked = t.accessLevel !== 'free' && (!user || (user.plan === 'free' && t.accessLevel !== 'free') || (user.plan === 'pro' && t.accessLevel === 'agency'))
+            const locked = planRank(user?.plan) < planRank(t.accessLevel)
             const isFav = favorites.includes(t.slug)
             return (
               <Card
@@ -346,6 +379,8 @@ function ToolsPortalInner() {
                             rows={f.rows || 4}
                             placeholder={f.placeholder}
                             required={f.required}
+                            minLength={f.minLength}
+                            maxLength={f.maxLength}
                             value={formValues[f.name] || ''}
                             onChange={e => setFormValues({...formValues, [f.name]: e.target.value})}
                             className="bg-black/30 border-border font-mono text-sm"
@@ -371,6 +406,30 @@ function ToolsPortalInner() {
                             />
                             <span className="text-sm text-muted-foreground">{f.help || f.desc || 'Enable'}</span>
                           </div>
+                        ) : f.type === 'file' ? (
+                          <label htmlFor={f.name} className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-cyan-400/30 bg-black/25 px-4 py-5 text-center transition-colors hover:bg-cyan-400/10">
+                            <UploadCloud className="mb-2 h-6 w-6 text-cyan-300" />
+                            <span className="text-sm font-medium">
+                              {Array.isArray(formValues[f.name])
+                                ? `${formValues[f.name].length} file(s) selected`
+                                : formValues[f.name]?.name || 'Choose file'}
+                            </span>
+                            <span className="mt-1 text-xs text-muted-foreground">
+                              {f.accept || 'Any supported file'}{f.multiple ? ' - multiple allowed' : ''}
+                            </span>
+                            <Input
+                              id={f.name}
+                              type="file"
+                              accept={f.accept}
+                              multiple={!!f.multiple}
+                              required={f.required}
+                              onChange={e => {
+                                const files = Array.from(e.target.files || [])
+                                setFormValues({...formValues, [f.name]: f.multiple ? files : files[0]})
+                              }}
+                              className="sr-only"
+                            />
+                          </label>
                         ) : (
                           <Input
                             id={f.name}
@@ -380,6 +439,8 @@ function ToolsPortalInner() {
                             min={f.min}
                             max={f.max}
                             step={f.step}
+                            minLength={f.minLength}
+                            maxLength={f.maxLength}
                             value={formValues[f.name] ?? ''}
                             onChange={e => setFormValues({...formValues, [f.name]: e.target.value})}
                             className="bg-black/30 border-border"
@@ -398,6 +459,13 @@ function ToolsPortalInner() {
                     </Button>
                     {result?.elapsedMs && <span className="text-xs text-muted-foreground">{result.elapsedMs}ms</span>}
                   </div>
+
+                  {formError && (
+                    <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{formError}</span>
+                    </div>
+                  )}
 
                   {result && (
                     <div className="mt-4">

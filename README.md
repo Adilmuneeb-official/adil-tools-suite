@@ -5,7 +5,7 @@ A complete SaaS tools platform built with Next.js 16, TypeScript, Prisma, and Ta
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Node.js 18+** or **Bun** (recommended)
+- **Node.js 20+** recommended
 - A hosting plan that supports Node.js
 
 ### Steps
@@ -16,20 +16,20 @@ unzip adil-tools-suite-nodejs.zip
 cd adil-tools-suite
 
 # 2. Install dependencies
-bun install   # OR: npm install
+npm install
 
 # 3. Set up environment variables
 cp .env.example .env
 # Edit .env with your values
 
 # 4. Set up the database (SQLite — no external DB needed)
-bun run db:push
+npm run db:push
 
 # 5. Seed dummy data
-bun run db:seed
+npm run db:seed
 
 # 6. Start the dev server
-bun run dev
+npm run dev
 
 # 7. Open http://localhost:3000
 ```
@@ -59,8 +59,8 @@ bun run dev
 ### Option C: VPS (Render, Railway, DigitalOcean)
 1. Push to GitHub
 2. Connect to platform
-3. Build: `bun run build`
-4. Start: `bun run start`
+3. Build: `npm run build`
+4. Start: `npm run start`
 
 ## 🔧 Environment Variables
 
@@ -92,12 +92,12 @@ openssl rand -base64 32
 
 | Command | Description |
 |---------|-------------|
-| `bun run dev` | Dev server |
-| `bun run build` | Build for production |
-| `bun run start` | Start production |
-| `bun run lint` | ESLint |
-| `bun run db:push` | Push DB schema |
-| `bun run db:seed` | Seed dummy data |
+| `npm run dev` | Dev server |
+| `npm run build` | Build for production |
+| `npm run start` | Start production |
+| `npm run lint` | ESLint |
+| `npm run db:push` | Push DB schema |
+| `npm run db:seed` | Seed dummy data |
 
 ## ➕ Adding New Tools
 

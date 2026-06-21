@@ -14,7 +14,7 @@ export async function POST() {
     try {
       const Stripe = (await import('stripe')).default
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-      await stripe.subscriptions.del(user.subscriptionId)
+      await stripe.subscriptions.cancel(user.subscriptionId)
     } catch (e) {
       console.error('Stripe cancel error', e)
     }

@@ -121,11 +121,10 @@ For full control.
 # SSH into your VPS
 ssh root@your-server-ip
 
-# Install Node.js 20 + Bun + PM2 + Nginx
+# Install Node.js 20 + PM2 + Nginx
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 apt install -y nodejs nginx
 npm install -g pm2
-curl -fsSL https://bun.sh/install | bash
 
 # Create a deploy user
 adduser deploy
@@ -136,15 +135,15 @@ git clone https://github.com/yourusername/adil-tools-suite.git
 cd adil-tools-suite
 
 # Install + build
-bun install
+npm install
 cp .env.example .env
 nano .env  # edit secrets
-bun run db:push
-bun run db:seed
-bun run build
+npm run db:push
+npm run db:seed
+npm run build
 
 # Start with PM2
-pm2 start "bun run start" --name adil-tools
+pm2 start "npm run start" --name adil-tools
 pm2 save
 pm2 startup  # follow instructions to enable on boot
 
@@ -231,13 +230,13 @@ After deploying, configure these webhooks in your payment dashboards:
 ## 8. Troubleshooting
 
 ### "Module not found" errors
-Run `npm install` again. If using Bun, ensure `bun install` completed.
+Run `npm install` again.
 
 ### Prisma client errors
 ```bash
 npx prisma generate
 # or
-bun run db:generate
+npm run db:generate
 ```
 
 ### Database connection issues
@@ -255,7 +254,7 @@ bun run db:generate
 
 ### Build fails on Vercel
 - Check build logs
-- Common cause: TypeScript errors. Run `bun run lint` locally to catch them.
+- Common cause: TypeScript errors. Run `npm run lint` and `npm run build` locally to catch them.
 
 ---
 

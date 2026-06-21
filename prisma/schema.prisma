@@ -35,6 +35,7 @@ model User {
   invoices        Invoice[]
   favorites       Favorite[]
   contactMessages ContactMessage[]
+  credit          UserCredit?
 }
 
 // ============ TOOL USAGE LOG ============
@@ -232,4 +233,25 @@ model PdfTempFile {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+
+// ============ PAYMENT WEBHOOK IDEMPOTENCY ============
+model PaymentEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String   @unique
+  eventType   String
+  payload     String?
+  processed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ============ USER CREDIT SYSTEM ============
+model UserCredit {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  credits     Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields:[userId], references:[id], onDelete:Cascade)
 }

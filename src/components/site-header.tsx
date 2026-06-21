@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Sparkles } from 'lucide-react'
+import { Menu, X, Sparkles, Shield } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export function SiteHeader() {
@@ -54,6 +54,11 @@ export function SiteHeader() {
               <Button asChild size="sm" variant="ghost">
                 <Link href="/dashboard">Dashboard</Link>
               </Button>
+              {user.role === 'admin' && (
+                <Button asChild size="sm" variant="ghost">
+                  <Link href="/admin"><Shield className="h-4 w-4" /> Admin</Link>
+                </Button>
+              )}
             </>
           ) : (
             <>
@@ -80,7 +85,12 @@ export function SiteHeader() {
             ))}
             <div className="flex gap-2 pt-2">
               {user ? (
-                <Button asChild className="flex-1"><Link href="/dashboard">Dashboard</Link></Button>
+                <>
+                  <Button asChild className="flex-1"><Link href="/dashboard">Dashboard</Link></Button>
+                  {user.role === 'admin' && (
+                    <Button asChild variant="outline" className="flex-1"><Link href="/admin">Admin</Link></Button>
+                  )}
+                </>
               ) : (
                 <>
                   <Button asChild variant="ghost" className="flex-1"><Link href="/login">Login</Link></Button>

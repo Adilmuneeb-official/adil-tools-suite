@@ -10,6 +10,100 @@ import { getCurrentUser } from '@/lib/auth'
 import { canUserAccessTool } from '@/lib/membership'
 import { db } from '@/lib/db'
 import { getClientIp } from '@/lib/auth'
+import type { ToolDefinition } from '@/lib/tools/registry'
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024
+
+type ParsedToolRequest = {
+  slug: string
+  values: Record<string, any>
+}
+
+async function parseToolRequest(req: NextRequest): Promise<ParsedToolRequest> {
+  const contentType = req.headers.get('content-type') || ''
+  if (!contentType.includes('multipart/form-data')) {
+    const body = await req.json()
+    return { slug: String(body.slug || ''), values: body }
+  }
+
+  const formData = await req.formData()
+  const slug = String(formData.get('slug') || '')
+  const values: Record<string, any> = { slug }
+
+  for (const [key, value] of formData.entries()) {
+    if (key === 'slug') continue
+    if (value instanceof File) {
+      const fileInfo = {
+        name: value.name,
+        type: value.type || 'application/octet-stream',
+        size: value.size,
+      }
+      const current = values[key]
+      values[key] = current ? ([] as any[]).concat(current, fileInfo) : fileInfo
+    } else {
+      values[key] = String(value)
+    }
+  }
+
+  return { slug, values }
+}
+
+function validateAndSanitize(tool: ToolDefinition, values: Record<string, any>): { inputs: Record<string, any>; errors: string[] } {
+  const inputs: Record<string, any> = {}
+  const errors: string[] = []
+
+  for (const f of tool.fields) {
+    const raw = values[f.name]
+    const isEmpty = raw === undefined || raw === null || raw === ''
+
+    if (f.required && isEmpty) {
+      errors.push(`${f.label} is required.`)
+      continue
+    }
+
+    if (f.type === 'number') {
+      const parsed = raw === undefined || raw === '' ? '' : Number(raw)
+      if (parsed !== '' && Number.isNaN(parsed)) errors.push(`${f.label} must be a number.`)
+      if (typeof parsed === 'number' && f.min !== undefined && parsed < f.min) errors.push(`${f.label} must be at least ${f.min}.`)
+      if (typeof parsed === 'number' && f.max !== undefined && parsed > f.max) errors.push(`${f.label} must be at most ${f.max}.`)
+      inputs[f.name] = parsed === '' ? '' : String(parsed)
+    } else if (f.type === 'checkbox') {
+      inputs[f.name] = raw === true || raw === 'true' || raw === 'on' || raw === 1
+    } else if (f.type === 'select') {
+      const value = raw !== undefined ? String(raw) : ''
+      if (value && f.options?.length && !f.options.some(o => o.value === value)) {
+        errors.push(`${f.label} has an invalid option.`)
+      }
+      inputs[f.name] = value
+    } else if (f.type === 'url') {
+      const value = raw !== undefined ? String(raw).trim() : ''
+      if (value) {
+        try { new URL(value) } catch { errors.push(`${f.label} must be a valid URL.`) }
+      }
+      inputs[f.name] = value
+    } else if (f.type === 'email') {
+      const value = raw !== undefined ? String(raw).trim() : ''
+      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) errors.push(`${f.label} must be a valid email.`)
+      inputs[f.name] = value
+    } else if (f.type === 'file') {
+      const files = Array.isArray(raw) ? raw : raw ? [raw] : []
+      for (const file of files) {
+        if (file.size > MAX_FILE_BYTES) errors.push(`${file.name || f.label} is larger than 10MB.`)
+        if (f.accept && file.type && !f.accept.split(',').map(x => x.trim()).includes(file.type)) {
+          errors.push(`${file.name || f.label} must match ${f.accept}.`)
+        }
+      }
+      inputs[f.name] = f.multiple ? files : (files[0] || null)
+    } else {
+      const value = raw !== undefined ? String(raw) : ''
+      if (f.minLength !== undefined && value.length < f.minLength) errors.push(`${f.label} must be at least ${f.minLength} characters.`)
+      if (f.maxLength !== undefined && value.length > f.maxLength) errors.push(`${f.label} must be at most ${f.maxLength} characters.`)
+      inputs[f.name] = value
+    }
+  }
+
+  return { inputs, errors }
+}
 
 export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get('slug')
@@ -35,8 +129,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const slug = body.slug
+    const { slug, values } = await parseToolRequest(req)
     if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
     const tool = getTool(slug)
     if (!tool) return NextResponse.json({ error: 'Tool not found' }, { status: 404 })
@@ -52,14 +145,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: msg, reason: access.reason, used: access.usedToday, limit: access.limit, upgradeTo: access.upgradeTo }, { status: 403 })
     }
 
-    // Sanitize input based on field definitions
-    const inputs: Record<string, any> = {}
-    for (const f of tool.fields) {
-      const raw = body[f.name]
-      if (f.type === 'number') inputs[f.name] = raw !== undefined ? String(raw) : ''
-      else if (f.type === 'checkbox') inputs[f.name] = raw === true || raw === 'true' || raw === 'on' || raw === 1
-      else if (f.type === 'file') inputs[f.name] = raw // for demo, we don't actually handle files
-      else inputs[f.name] = raw !== undefined ? String(raw) : ''
+    const { inputs, errors } = validateAndSanitize(tool, values)
+    if (errors.length) {
+      return NextResponse.json({ error: errors[0], errors }, { status: 400 })
     }
 
     // Execute

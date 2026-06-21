@@ -28,6 +28,8 @@ export interface ToolField {
   min?: number
   max?: number
   step?: number
+  minLength?: number
+  maxLength?: number
 }
 
 export interface ToolCategory {
@@ -49,6 +51,7 @@ export interface ToolDefinition {
   fields: ToolField[]
   handler: (input: Record<string, any>) => Promise<{ output: string; extra?: Record<string, any> }>
   tags?: string[]
+  usageCost?: number
   sortOrder?: number
 }
 

@@ -6,6 +6,7 @@ import Stripe from 'stripe'
 import { db } from '@/lib/db'
 import { setUserPlan, computeExpiry, planPrice } from './membership'
 import { applyCoupon, incrementCouponUsage, validateCoupon } from './coupons'
+import { alreadyProcessed, savePaymentEvent } from './billing/webhooks'
 
 let stripeInstance: Stripe | null = null
 function getStripe(): Stripe {
@@ -69,6 +70,8 @@ export async function handleStripeWebhook(payload: string | Buffer, signature: s
   } catch (err: any) {
     return { received: false, error: `Invalid signature: ${err.message}` }
   }
+  if (await alreadyProcessed('stripe', event.id)) return { received: true }
+  await savePaymentEvent('stripe', event.id, event.type, event)
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
