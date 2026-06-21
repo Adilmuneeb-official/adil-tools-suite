@@ -1,0 +1,166 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --radius: 0.875rem;
+  /* Dark theme — Adil Tools Suite */
+  --background: #06070d;
+  --foreground: #e6f1ff;
+  --card: rgba(13, 15, 26, 0.55);
+  --card-foreground: #e6f1ff;
+  --popover: #0d0f1a;
+  --popover-foreground: #e6f1ff;
+  --primary: #22d3ee;
+  --primary-foreground: #06070d;
+  --secondary: #1d2138;
+  --secondary-foreground: #e6f1ff;
+  --muted: #1d2138;
+  --muted-foreground: #8a93a6;
+  --accent: #e83bff;
+  --accent-foreground: #06070d;
+  --destructive: #f87171;
+  --destructive-foreground: #06070d;
+  --border: #1d2138;
+  --border-light: #2a3050;
+  --input: #1d2138;
+  --ring: #22d3ee;
+  --chart-1: #22d3ee;
+  --chart-2: #e83bff;
+  --chart-3: #9bff6b;
+  --chart-4: #fbbf24;
+  --chart-5: #f87171;
+  --sidebar: #0d0f1a;
+  --sidebar-foreground: #e6f1ff;
+  --sidebar-primary: #22d3ee;
+  --sidebar-primary-foreground: #06070d;
+  --sidebar-accent: #1d2138;
+  --sidebar-accent-foreground: #e6f1ff;
+  --sidebar-border: #1d2138;
+  --sidebar-ring: #22d3ee;
+  /* Custom tokens */
+  --accent-2: #e83bff;
+  --accent-3: #9bff6b;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --glass-blur: 18px;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+}
+
+body {
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* 3D Background canvas — fixed, behind everything */
+.three-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Animated gradient orbs as CSS-only fallback */
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  animation: orbFloat 18s ease-in-out infinite alternate;
+}
+.bg-orb-1 { width: 540px; height: 540px; top: -120px; left: -120px; background: var(--primary); }
+.bg-orb-2 { width: 480px; height: 480px; bottom: -150px; right: -150px; background: var(--accent); animation-delay: -6s; }
+.bg-orb-3 { width: 380px; height: 380px; top: 40%; left: 55%; background: var(--accent-3); opacity: 0.18; animation-delay: -12s; }
+
+@keyframes orbFloat {
+  0% { transform: translate(0,0) scale(1); }
+  100% { transform: translate(80px,-60px) scale(1.15); }
+}
+
+/* Glass utility */
+.glass {
+  background: rgba(13, 15, 26, 0.55);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary), var(--accent), var(--accent-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

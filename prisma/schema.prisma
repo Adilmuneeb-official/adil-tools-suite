@@ -1,0 +1,235 @@
+// Adil Tools Suite — Prisma schema
+// All business data lives here. The Next.js app is the single source of truth.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USERS ============
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  passwordHash  String?
+  phone         String?
+  whatsapp      String?
+  emailVerified DateTime?
+  plan          String   @default("free") // free | pro | agency
+  planExpiresAt DateTime?
+  subscriptionId String? // gateway subscription ID
+  apiKey        String?
+  role          String   @default("user") // user | admin
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  toolUsage       ToolUsage[]
+  savedResults    SavedResult[]
+  userActivity    UserActivity[]
+  subscriptions   Subscription[]
+  transactions    Transaction[]
+  invoices        Invoice[]
+  favorites       Favorite[]
+  contactMessages ContactMessage[]
+}
+
+// ============ TOOL USAGE LOG ============
+model ToolUsage {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolSlug        String
+  toolCategory    String   @default("")
+  inputData       String?
+  outputData      String?
+  executionTimeMs Int      @default(0)
+  ip              String   @default("")
+  userAgent       String   @default("")
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([toolSlug])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+// ============ SAVED RESULTS ============
+model SavedResult {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolSlug  String
+  title     String   @default("")
+  preview   String?
+  data      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([toolSlug])
+}
+
+// ============ USER ACTIVITY ============
+model UserActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  detail    String   @default("")
+  ip        String   @default("")
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+}
+
+// ============ FAVORITES ============
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolSlug  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, toolSlug])
+  @@index([userId])
+}
+
+// ============ SUBSCRIPTIONS ============
+model Subscription {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            String   @default("free") // free | pro | agency
+  gateway         String   @default("") // stripe | paypal | bank
+  subscriptionId  String   @default("")
+  status          String   @default("active") // active | cancelled | expired
+  billingCycle    String   @default("monthly") // monthly | quarterly | yearly
+  amount          Float    @default(0)
+  currency        String   @default("USD")
+  startedAt       DateTime @default(now())
+  expiresAt       DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([status])
+}
+
+// ============ TRANSACTIONS ============
+model Transaction {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId  String?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  transactionType String   @default("payment") // payment | refund | trial | plan_change
+  gateway         String   @default("")
+  plan            String   @default("free")
+  amount          Float    @default(0)
+  currency        String   @default("USD")
+  status          String   @default("pending")
+  transactionId   String   @default("")
+  invoiceNumber   String   @unique
+  billingCycle    String   @default("monthly")
+  couponCode      String   @default("")
+  discount        Float    @default(0)
+  description     String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============ INVOICES ============
+model Invoice {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String?
+  invoiceNumber String   @unique
+  plan          String
+  amount        Float    @default(0)
+  currency      String   @default("USD")
+  billingCycle  String   @default("monthly")
+  status        String   @default("issued") // issued | paid | void
+  issuedAt      DateTime @default(now())
+  paidAt        DateTime?
+
+  @@index([userId])
+}
+
+// ============ COUPONS ============
+model Coupon {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  type             String   @default("percentage") // percentage | fixed
+  value            Float    @default(0)
+  maxUses          Int      @default(0) // 0 = unlimited
+  usedCount        Int      @default(0)
+  applicablePlans  String   @default("") // comma-separated: "pro,agency"
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+}
+
+// ============ CONTACT MESSAGES ============
+model ContactMessage {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  email     String
+  subject   String   @default("")
+  message   String
+  ip        String   @default("")
+  userAgent String   @default("")
+  status    String   @default("new") // new | read | replied | closed
+  createdAt DateTime @default(now())
+}
+
+// ============ BLOG POSTS ============
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  excerpt   String?
+  content   String?
+  category  String   @default("General")
+  tags      String   @default("")
+  published Boolean  @default(true)
+  authorId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ TESTIMONIALS ============
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String
+  avatar    String?
+  text      String
+  rating    Int      @default(5)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// ============ PDF TEMP FILES (audit only) ============
+model PdfTempFile {
+  id        String   @id @default(cuid())
+  filePath  String
+  userId    String?
+  toolSlug  String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
